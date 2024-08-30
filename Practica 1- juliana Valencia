@@ -1,0 +1,171 @@
+-- importar las librerias necesarias que ayudan a usar funciones, revisar errores
+--y leer el archivo
+
+import Data.List
+import System.IO
+import Control.Exception
+import Control.DeepSeq (deepseq)
+
+
+-- se define el tipo de datos
+
+data Producto = Producto {
+
+   nombre :: String,
+   categoria :: String,
+   cantidad :: Int
+} deriving(Show, Read)
+
+
+-- la funcion para agregar un producto al inventario
+
+-- se hace una busqueda filtrada en el inventario y se agrega o se actualiza su cantidad si ya existe
+
+
+entradaProducto :: String -> String -> Int -> [Producto] -> [Producto]
+entradaProducto nombrePr categoriaPr cantidadPr inventario =
+    let existeInventario = find (\p -> nombre p == nombrePr && categoria p == categoriaPr) inventario
+    in case existeInventario of
+        Just prod -> map (\p -> if nombre p == nombrePr && categoria p == categoriaPr
+                                then p { cantidad = cantidad p + cantidadPr }
+                                else p) inventario
+        Nothing   -> Producto nombrePr categoriaPr cantidadPr : inventario
+
+
+
+
+-- la funcion de  buscar productos por categoria ayuda a juntar los productos por
+--su categoria especifica
+
+productosPorCategoria :: String -> [Producto] -> [Producto]
+productosPorCategoria categoriaPr = filter (\p -> categoria p == categoriaPr)
+
+
+-- esta funcion hace un recuento de cuentos productos pertenecen a una
+--categoria en especifico
+
+contarPorCategoria :: String ->  [Producto] -> Int
+contarPorCategoria categoriaPr inventario =
+
+    length $ productosPorCategoria categoriaPr inventario
+
+
+
+
+
+
+
+-- funcion para poner en lista todos los productos del inventario
+
+
+listaPr :: [Producto] -> IO () -- chequea si hay productos, si esta vacio manda mensaje
+listaPr [] = putStrLn "no hay productos en el inventario"
+listaPr productos = do
+    putStrLn "el inventario esta completo"
+    mapM_ (putStrLn . mostrarProducto) productos
+
+
+
+--funcion para mostrar la informacion de un producto
+
+-- se crea una cadena que muestre todas las caracteristicas el producto
+mostrarProducto :: Producto -> String
+mostrarProducto (Producto nombre categoria cantidad) =
+    "Producto: " ++ nombre ++ ", categoria: " ++ categoria ++ ", cantidad (unidades/gr): " ++ show cantidad
+
+
+--guardar el inventario
+guardarInventario :: [Producto] -> IO ()
+guardarInventario inventario = do
+      withFile "inventario.txt" WriteMode $ \h -> do
+        mapM_ (hPrint h) inventario
+
+
+
+
+    --funcion para cargar un archivo con el inventario
+
+cargarInventario :: IO [Producto]
+cargarInventario = do
+ contenido <- withFile "inventario.txt" ReadMode $ \h -> do
+         contenido <- hGetContents h
+         contenido `deepseq` return contenido
+ return (map read (lines contenido))
+
+
+-- MAIN
+
+main :: IO ()
+main = do
+--Cargar el inventario desde el archivo
+    inventario <- cargarInventario
+    putStrLn "Bienvenido a la pagina principal"
+    menuPrincipal inventario
+--ciclo principal del programa
+
+
+menuPrincipal :: [Producto] -> IO ()
+menuPrincipal inventario = do
+
+-- se carga el menu principal
+  putStrLn "\nSELECCIONE UNA OPCION: "
+  putStrLn "|1| registrar entrada de un producto"
+  putStrLn "|2| buscar por categoria"
+  putStrLn "|3| lista de productos disponibles"
+  putStrLn "|4| contar productos por categoria"
+  putStrLn "|5| salir"
+
+  op <- getLine
+  case op of
+
+    --registrar o actualizar la informacion de un producto
+        "1" -> do
+            putStrLn "ingrese el nombre del producto: "
+            nombrePr <- getLine
+
+            putStrLn "ingrese la categoria del producto: "
+            categoriaPr <- getLine
+
+            putStrLn "ingrese la cantidad a agregar: "
+            cantidadPr <- readLn -- convertir a un numero
+
+            let inventarioActualizado = entradaProducto nombrePr categoriaPr cantidadPr inventario
+            putStrLn $ "producto " ++ nombrePr ++ " registrado en el inventario"
+            guardarInventario inventarioActualizado
+            menuPrincipal inventarioActualizado
+
+
+        --opcion para buscar con base a la categoria del producto
+        "2"-> do
+            putStrLn "ingrese la categoria del producto a buscar: "
+            categoriaPr <- getLine
+
+            let productos = productosPorCategoria categoriaPr inventario
+            if null productos -- el sistema se pregunta si esta vacio el inventario en esa categoria
+            then putStrLn " no se encontraron productos en esta categoria"
+            else mapM_ (putStrLn . mostrarProducto) productos
+            menuPrincipal inventario
+
+        --opcion para imprimir todos los productos enlistados
+        "3" -> do
+        --llamar la funcion de inventario
+            listaPr inventario
+            menuPrincipal inventario
+
+        --opcion para contar los productos de una categoria especifica
+        "4" -> do
+            putStrLn "ingrese la categoria del producto a contar: "
+            categoriaPr <- getLine
+            let cantidadTotal = contarPorCategoria categoriaPr inventario
+            putStrLn $ "cantidad total de productos en la categoria: " ++ categoriaPr ++ ": " ++ show cantidadTotal
+            menuPrincipal inventario
+
+
+        --opcion para salir del programa
+        "5" -> putStrLn " ha salido del programa"
+
+        --default
+
+        _ -> do
+                putStrLn "opcion no validad, por favor intente nuevamente"
+                menuPrincipal inventario
