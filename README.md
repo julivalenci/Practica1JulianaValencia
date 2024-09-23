@@ -12,3 +12,5 @@ Producto {nombre = "jabon", categoria = "1", cantidad = 2}
 Producto {nombre = "Manzanas", categoria = "Frutas", cantidad = 50}
 Producto {nombre = "Tomates", categoria = "Verduras", cantidad = 30}
 
+
+enlace al video de explicacion del codigo: https://youtu.be/DujXNSwf2aw
